@@ -27,6 +27,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ task
     const update: Record<string, unknown> = {};
     if (body.title !== undefined) update.title = body.title;
     if (body.description !== undefined) update.description = body.description;
+    if (body.priority !== undefined) update.priority = body.priority;
+    if (body.dueDate !== undefined) update.due_date = body.dueDate;
     if (body.completed !== undefined) {
       update.completed = body.completed;
       update.completed_at = body.completed ? new Date().toISOString() : null;

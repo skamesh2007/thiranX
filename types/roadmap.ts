@@ -7,11 +7,16 @@ export interface Roadmap {
   progress: number;
 }
 
+export type TaskPriority = "LOW" | "MEDIUM" | "HIGH";
+
 export interface RoadmapTask {
   id: number;
   title: string;
   description: string;
   completed: boolean;
+  priority: TaskPriority;
+  dueDate: string | null;
+  estimatedHours: number;
 }
 
 export interface CreateRoadmapRequest {
@@ -23,8 +28,6 @@ export interface UpdateRoadmapRequest {
   title: string;
   description: string;
 }
-
-export type TaskPriority = "LOW" | "MEDIUM" | "HIGH";
 
 export interface RecommendedTask {
   taskId: number;

@@ -312,7 +312,25 @@ export default function RoadmapPage() {
                   />
 
                   <div>
-                    <p className="font-medium">{task.title}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium">{task.title}</p>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                          task.priority === "HIGH"
+                            ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400"
+                            : task.priority === "LOW"
+                              ? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                              : "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-400"
+                        }`}
+                      >
+                        {task.priority}
+                      </span>
+                      {task.dueDate && (
+                        <span className="text-xs text-muted-foreground">
+                          Due {task.dueDate}
+                        </span>
+                      )}
+                    </div>
 
                     {task.description && (
                       <p className="text-sm text-muted-foreground">
@@ -328,6 +346,8 @@ export default function RoadmapPage() {
                     title={task.title}
                     description={task.description ?? ""}
                     completed={task.completed}
+                    priority={task.priority}
+                    dueDate={task.dueDate}
                     onUpdated={async () => {
                       if (selectedRoadmap) {
                         await loadTasks(selectedRoadmap.id)

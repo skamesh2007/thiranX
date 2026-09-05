@@ -37,6 +37,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         roadmap_id: roadmap.id,
         title: body.title,
         description: body.description ?? null,
+        priority: body.priority ?? "MEDIUM",
+        due_date: body.dueDate ?? null,
         completed: false,
       })
       .select("*")

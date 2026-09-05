@@ -3,59 +3,44 @@
 import { useEffect, useState } from "react"
 
 import { useAuthStore } from "@/store/authStore"
-import { getDashboard } from "@/services/dashboardService"
+import { getDashboard, getCareerMomentum, getUpcomingTasks } from "@/services/dashboardService"
 
 import AICoachCard from "@/components/dashboard/AICoachCard"
+import CareerMomentumCard from "@/components/dashboard/CareerMomentumCard"
+import QuickActionsCard from "@/components/dashboard/QuickActionsCard"
+import UpcomingTasksCard from "@/components/dashboard/UpcomingTasksCard"
+import PlatformSnapshotCard from "@/components/dashboard/PlatformSnapshotCard"
 
 import { getSavedInsights } from "@/services/aiService"
 import { AIInsightsResponse } from "@/types/ai"
+import { CareerMomentumResponse, DashboardResponse, UpcomingTask } from "@/types/dashboard"
 
-import CareerMomentumCard from "@/components/dashboard/CareerMomentumCard"
-
-import { getCareerMomentum } from "@/services/dashboardService"
-
-import { CareerMomentumResponse, DashboardResponse } from "@/types/dashboard"
-
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 
 import { useRouter } from "next/navigation"
 
-import {
-  BookOpen,
-  CheckCircle2,
-  Code2,
-  Rocket,
-  Sparkles,
-  Target,
-} from "lucide-react"
+import { BookOpen, CheckCircle2, Code2, Rocket, Sparkles, Target } from "lucide-react"
 
 import DashboardLoading from "@/components/loading/DashboardLoading"
 
 export default function DashboardPage() {
   const user = useAuthStore((state) => state.user)
-
   const router = useRouter()
 
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null)
   const [insights, setInsights] = useState<AIInsightsResponse | null>(null)
   const [dashboardLoading, setDashboardLoading] = useState(true)
-  const [insightsLoading, setInsightsLoading] = useState(false)
+  const [insightsLoading] = useState(false)
 
   const [momentum, setMomentum] = useState<CareerMomentumResponse | null>(null)
 
-  useEffect(() => {
-    console.log("Dashboard effect fired")
+  const [upcomingTasks, setUpcomingTasks] = useState<UpcomingTask[]>([])
+  const [upcomingTasksLoading, setUpcomingTasksLoading] = useState(true)
 
+  useEffect(() => {
     Promise.all([getDashboard(), getCareerMomentum()])
       .then(([dashboardData, momentumData]) => {
         setDashboard(dashboardData)
@@ -69,9 +54,28 @@ export default function DashboardPage() {
     getSavedInsights()
       .then(setInsights)
       .catch(() => setInsights(null))
+
+    getUpcomingTasks()
+      .then((data) => setUpcomingTasks(data.tasks))
+      .catch(console.error)
+      .finally(() => setUpcomingTasksLoading(false))
   }, [])
 
-  console.log(insights)
+  const handleTaskCompleted = (taskId: number) => {
+    setUpcomingTasks((prev) => prev.filter((t) => t.taskId !== taskId))
+    setDashboard((prev) =>
+      prev
+        ? {
+            ...prev,
+            completedTasks: prev.completedTasks + 1,
+            roadmapProgress:
+              prev.totalTasks === 0
+                ? prev.roadmapProgress
+                : Math.floor(((prev.completedTasks + 1) * 100) / prev.totalTasks),
+          }
+        : prev
+    )
+  }
 
   const stats = dashboard
     ? [
@@ -160,35 +164,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Continue Learning */}
-      <Card className="rounded-2xl">
-        <CardHeader>
-          <CardTitle>Continue Learning</CardTitle>
-
-          <CardDescription>Pick up where you left off.</CardDescription>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          <div className="rounded-xl border p-4">
-            <p className="font-medium">Your Current Roadmap</p>
-
-            <p className="text-sm text-muted-foreground">
-              {dashboard?.completedTasks ?? 0} of {dashboard?.totalTasks ?? 0}{" "}
-              tasks completed
-            </p>
-
-            <Progress
-              value={dashboard?.roadmapProgress ?? 0}
-              className="mt-3"
-            />
-          </div>
-
-          <Button className="w-full" onClick={() => router.push("/roadmap")}>
-            Continue Roadmap
-          </Button>
-        </CardContent>
-      </Card>
-
       {/* Stats */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => {
@@ -220,7 +195,20 @@ export default function DashboardPage() {
         })}
       </div>
 
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <UpcomingTasksCard
+            tasks={upcomingTasks}
+            loading={upcomingTasksLoading}
+            onTaskCompleted={handleTaskCompleted}
+          />
+        </div>
+        <QuickActionsCard />
+      </div>
+
       {momentum && <CareerMomentumCard momentum={momentum} />}
+
+      <PlatformSnapshotCard />
 
       <AICoachCard
         insightsLoading={insightsLoading}

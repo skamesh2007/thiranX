@@ -15,14 +15,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 import { updateTask } from "@/services/taskService";
+import { TaskPriority } from "@/types/roadmap";
 
 interface Props {
   taskId: number;
   title: string;
   description: string;
   completed: boolean;
+  priority: TaskPriority;
+  dueDate: string | null;
   onUpdated: () => Promise<void>;
 }
 
@@ -31,60 +36,79 @@ export default function EditTaskDialog({
   title: initialTitle,
   description: initialDescription,
   completed,
+  priority: initialPriority,
+  dueDate: initialDueDate,
   onUpdated,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false)
+  const [isSaving, setIsSaving] = useState(false);
 
-  const [title, setTitle] =
-    useState(initialTitle);
-
-  const [description, setDescription] =
-    useState(initialDescription);
+  const [title, setTitle] = useState(initialTitle);
+  const [description, setDescription] = useState(initialDescription);
+  const [priority, setPriority] = useState<TaskPriority>(initialPriority);
+  const [dueDate, setDueDate] = useState(initialDueDate ?? "");
 
   const handleSubmit = async () => {
     try {
-      setIsSaving(true)
-      await updateTask(taskId, { title, description, completed })
-      await onUpdated()
-      setOpen(false)
+      setIsSaving(true);
+      await updateTask(taskId, {
+        title,
+        description,
+        completed,
+        priority,
+        dueDate: dueDate || null,
+      });
+      await onUpdated();
+      setOpen(false);
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Pencil className="h-4 w-4 cursor-pointer text-muted-foreground" />
       </DialogTrigger>
 
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            Edit Task
-          </DialogTitle>
+          <DialogTitle>Edit Task</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          <Input
-            value={title}
-            onChange={(e) =>
-              setTitle(e.target.value)
-            }
-          />
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} />
 
           <Textarea
             value={description}
-            onChange={(e) =>
-              setDescription(
-                e.target.value
-              )
-            }
+            onChange={(e) => setDescription(e.target.value)}
           />
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Priority</Label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value as TaskPriority)}
+                className={cn(
+                  "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                )}
+              >
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Due date</Label>
+              <Input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
+            </div>
+          </div>
 
           <Button onClick={handleSubmit} disabled={isSaving}>
             {isSaving ? (

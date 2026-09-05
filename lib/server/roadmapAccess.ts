@@ -33,5 +33,8 @@ export function mapTask(task: any) {
     title: task.title,
     description: task.description,
     completed: task.completed,
+    priority: task.priority,
+    dueDate: task.due_date,
+    estimatedHours: task.estimated_hours,
   };
 }

@@ -20,3 +20,17 @@ export interface DashboardResponse {
   activeProjects: number;
   leetcodeSolved: number;
 }
+
+export interface UpcomingTask {
+  taskId: number;
+  roadmapId: number;
+  roadmapTitle: string;
+  title: string;
+  dueDate: string | null;
+  priority: "LOW" | "MEDIUM" | "HIGH";
+  overdue: boolean;
+}
+
+export interface UpcomingTasksResponse {
+  tasks: UpcomingTask[];
+}
