@@ -25,6 +25,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 
 import EditRoadmapDialog from "@/components/roadmap/EditRoadmapDialog"
 import EditTaskDialog from "@/components/roadmap/EditTaskDialog"
+import TaskResourcesDialog from "@/components/roadmap/TaskResourcesDialog"
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -337,6 +338,10 @@ export default function RoadmapPage() {
                         {task.description}
                       </p>
                     )}
+
+                    <div className="mt-1.5">
+                      <TaskResourcesDialog taskId={task.id} taskTitle={task.title} />
+                    </div>
                   </div>
                 </div>
 

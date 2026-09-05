@@ -79,3 +79,12 @@ alter table roadmap_tasks enable row level security;
 alter table leetcode_stats enable row level security;
 alter table leetcode_recent_submissions enable row level security;
 alter table ai_insights enable row level security;
+
+-- Learning resources feature: AI-suggested resources per task, cached
+-- so we don't re-call Gemini on every dialog open.
+create table if not exists task_resources (
+  task_id bigint primary key references roadmap_tasks(id) on delete cascade,
+  resources jsonb not null,
+  generated_at timestamptz not null default now()
+);
+alter table task_resources enable row level security;

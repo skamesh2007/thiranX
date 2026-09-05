@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { updateTask } from "@/services/taskService"
 import { UpcomingTask } from "@/types/dashboard"
+import TaskResourcesDialog from "@/components/roadmap/TaskResourcesDialog"
 
 const priorityBadgeClass: Record<UpcomingTask["priority"], string> = {
   HIGH: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400",
@@ -103,6 +104,9 @@ export default function UpcomingTasksCard({
                     </>
                   )}
                 </p>
+                <div className="mt-1">
+                  <TaskResourcesDialog taskId={task.taskId} taskTitle={task.title} />
+                </div>
               </div>
 
               <Button
