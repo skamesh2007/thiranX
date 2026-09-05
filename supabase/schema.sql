@@ -88,3 +88,21 @@ create table if not exists task_resources (
   generated_at timestamptz not null default now()
 );
 alter table task_resources enable row level security;
+
+-- Calendar & to-do planning: standalone tasks not tied to any roadmap
+-- (quick personal to-dos), surfaced on the calendar alongside roadmap
+-- tasks that have a due date.
+create table if not exists todos (
+  id bigserial primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  title text not null,
+  description text,
+  due_date date,
+  priority text not null default 'MEDIUM' check (priority in ('LOW','MEDIUM','HIGH')),
+  completed boolean not null default false,
+  created_at timestamptz not null default now(),
+  completed_at timestamptz
+);
+create index if not exists idx_todos_user on todos(user_id);
+create index if not exists idx_todos_due_date on todos(due_date);
+alter table todos enable row level security;

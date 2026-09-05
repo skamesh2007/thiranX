@@ -2,14 +2,14 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Map, MessageCircle, Sparkles, User } from "lucide-react"
+import { CalendarDays, Home, Map, MessageCircle, User } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const tabs = [
   { href: "/dashboard", label: "Home", Icon: Home },
   { href: "/roadmap", label: "Roadmap", Icon: Map },
   { href: "/chat", label: "Chat", Icon: MessageCircle },
-  { href: "/insights", label: "Insights", Icon: Sparkles },
+  { href: "/calendar", label: "Calendar", Icon: CalendarDays },
   { href: "/profile", label: "Profile", Icon: User },
 ] as const
 

@@ -10,10 +10,10 @@ import {
   MessageCircle,
   Settings,
   Sparkles,
+  CalendarDays,
   User,
 } from "lucide-react"
 import { FaGithub as Github } from "react-icons/fa"
-
 
 import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/store/authStore"
@@ -30,6 +30,7 @@ import {
 const primaryLinks = [
   { href: "/dashboard", label: "Dashboard", Icon: Home },
   { href: "/roadmap", label: "Roadmap", Icon: Map },
+  { href: "/calendar", label: "Calendar", Icon: CalendarDays },
   { href: "/chat", label: "Chat", Icon: MessageCircle },
   { href: "/insights", label: "Insights", Icon: Sparkles },
   { href: "/github", label: "GitHub", Icon: Github },

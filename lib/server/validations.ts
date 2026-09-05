@@ -55,3 +55,22 @@ export const githubUsernameSchema = z.object({
 export const leetcodeUsernameSchema = z.object({
   leetcodeUsername: z.string().trim().max(100).nullable().optional(),
 });
+
+export const createTodoSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(1000).nullable().optional(),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH"]).optional(),
+  dueDate: z.string().trim().min(1).nullable().optional(),
+});
+
+export const updateTodoSchema = z.object({
+  title: z.string().trim().min(1).max(200).optional(),
+  description: z.string().trim().max(1000).nullable().optional(),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH"]).optional(),
+  dueDate: z.string().trim().min(1).nullable().optional(),
+  completed: z.boolean().optional(),
+});
+
+export const aiPlanSchema = z.object({
+  days: z.number().int().min(1).max(14).optional(),
+});
