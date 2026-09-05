@@ -7,7 +7,6 @@ import { getDashboard, getCareerMomentum, getUpcomingTasks } from "@/services/da
 
 import AICoachCard from "@/components/dashboard/AICoachCard"
 import CareerMomentumCard from "@/components/dashboard/CareerMomentumCard"
-import QuickActionsCard from "@/components/dashboard/QuickActionsCard"
 import UpcomingTasksCard from "@/components/dashboard/UpcomingTasksCard"
 import PlatformSnapshotCard from "@/components/dashboard/PlatformSnapshotCard"
 
@@ -195,18 +194,14 @@ export default function DashboardPage() {
         })}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <UpcomingTasksCard
-            tasks={upcomingTasks}
-            loading={upcomingTasksLoading}
-            onTaskCompleted={handleTaskCompleted}
-          />
-        </div>
-        <QuickActionsCard />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <UpcomingTasksCard
+          tasks={upcomingTasks}
+          loading={upcomingTasksLoading}
+          onTaskCompleted={handleTaskCompleted}
+        />
+        {momentum && <CareerMomentumCard momentum={momentum} />}
       </div>
-
-      {momentum && <CareerMomentumCard momentum={momentum} />}
 
       <PlatformSnapshotCard />
 

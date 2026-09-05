@@ -12,15 +12,16 @@ import { getLeetCodeUsername, getMyLeetCodeStats } from "@/services/leetcodeServ
 import { GitHubStatsResponse } from "@/types/github"
 import { LeetCodeStatsResponse } from "@/types/leetcode"
 
+
 export default function PlatformSnapshotCard() {
   const router = useRouter()
-
+ 
   const [githubLinked, setGithubLinked] = useState<boolean | null>(null)
   const [githubStats, setGithubStats] = useState<GitHubStatsResponse | null>(null)
-
+ 
   const [leetcodeLinked, setLeetcodeLinked] = useState<boolean | null>(null)
   const [leetcodeStats, setLeetcodeStats] = useState<LeetCodeStatsResponse | null>(null)
-
+ 
   useEffect(() => {
     getGitHubUsername()
       .then(({ githubUsername }) => {
@@ -28,7 +29,7 @@ export default function PlatformSnapshotCard() {
         if (githubUsername) return getGitHubStats().then(setGithubStats)
       })
       .catch(() => setGithubLinked(false))
-
+ 
     getLeetCodeUsername()
       .then(({ username }) => {
         setLeetcodeLinked(Boolean(username))
@@ -36,10 +37,10 @@ export default function PlatformSnapshotCard() {
       })
       .catch(() => setLeetcodeLinked(false))
   }, [])
-
+ 
   return (
     <div className="grid gap-6 sm:grid-cols-2">
-      <Card className="rounded-2xl">
+      <Card className="cursor-pointer rounded-2xl transition hover:shadow-md" onClick={() => router.push("/github")}>
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-500/10">
@@ -51,7 +52,7 @@ export default function PlatformSnapshotCard() {
             </div>
           </div>
         </CardHeader>
-
+ 
         <CardContent>
           {githubLinked === null ? (
             <div className="h-16 animate-pulse rounded-xl border bg-muted" />
@@ -89,8 +90,8 @@ export default function PlatformSnapshotCard() {
           )}
         </CardContent>
       </Card>
-
-      <Card className="rounded-2xl">
+ 
+      <Card className="cursor-pointer rounded-2xl transition hover:shadow-md" onClick={() => router.push("/leetcode")}>
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500/10">
@@ -102,7 +103,7 @@ export default function PlatformSnapshotCard() {
             </div>
           </div>
         </CardHeader>
-
+ 
         <CardContent>
           {leetcodeLinked === null ? (
             <div className="h-16 animate-pulse rounded-xl border bg-muted" />
@@ -137,3 +138,4 @@ export default function PlatformSnapshotCard() {
     </div>
   )
 }
+ 
