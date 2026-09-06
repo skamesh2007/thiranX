@@ -1,215 +1,425 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 
-import { useAuthStore } from "@/store/authStore"
-import { getDashboard, getCareerMomentum, getUpcomingTasks } from "@/services/dashboardService"
+import {
+  getRoadmaps,
+  deleteRoadmap,
+  getRoadmapAnalytics,
+} from "@/services/roadmapService"
+import { getTasks, updateTask } from "@/services/taskService"
 
-import AICoachCard from "@/components/dashboard/AICoachCard"
-import CareerMomentumCard from "@/components/dashboard/CareerMomentumCard"
-import UpcomingTasksCard from "@/components/dashboard/UpcomingTasksCard"
-import PlatformSnapshotCard from "@/components/dashboard/PlatformSnapshotCard"
-
-import { getSavedInsights } from "@/services/aiService"
-import { AIInsightsResponse } from "@/types/ai"
-import { CareerMomentumResponse, DashboardResponse, UpcomingTask } from "@/types/dashboard"
+import { Roadmap, RoadmapTask, RoadmapAnalyticsResponse } from "@/types/roadmap"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 
-import { useRouter } from "next/navigation"
+import CreateRoadmapDialog from "@/components/roadmap/CreateRoadmapDialog"
+import CreateTaskDialog from "@/components/roadmap/CreateTaskDialog"
 
-import { BookOpen, CheckCircle2, Code2, Rocket, Sparkles, Target } from "lucide-react"
+import { Trash2, Loader2 } from "lucide-react"
+import { deleteTask } from "@/services/taskService"
+import DeleteConfirmDialog from "@/components/roadmap/DeleteConfirmDialog"
 
-import DashboardLoading from "@/components/loading/DashboardLoading"
+import { Checkbox } from "@/components/ui/checkbox"
 
-export default function DashboardPage() {
-  const user = useAuthStore((state) => state.user)
-  const router = useRouter()
+import EditRoadmapDialog from "@/components/roadmap/EditRoadmapDialog"
+import EditTaskDialog from "@/components/roadmap/EditTaskDialog"
+import TaskResourcesDialog from "@/components/roadmap/TaskResourcesDialog"
 
-  const [dashboard, setDashboard] = useState<DashboardResponse | null>(null)
-  const [insights, setInsights] = useState<AIInsightsResponse | null>(null)
-  const [dashboardLoading, setDashboardLoading] = useState(true)
-  const [insightsLoading] = useState(false)
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 
-  const [momentum, setMomentum] = useState<CareerMomentumResponse | null>(null)
+import RoadmapAnalyticsCard from "@/components/roadmap/RoadmapAnalyticsCard"
+import RoadmapLoading from "@/components/loading/RoadmapLoading"
 
-  const [upcomingTasks, setUpcomingTasks] = useState<UpcomingTask[]>([])
-  const [upcomingTasksLoading, setUpcomingTasksLoading] = useState(true)
+export default function RoadmapPage() {
+  const [roadmaps, setRoadmaps] = useState<Roadmap[]>([])
+  const [selectedRoadmap, setSelectedRoadmap] = useState<Roadmap | null>(null)
+  const [tasks, setTasks] = useState<RoadmapTask[]>([])
+  const [analytics, setAnalytics] = useState<RoadmapAnalyticsResponse | null>(
+    null
+  )
+  const [loading, setLoading] = useState(true)
+  const [deletingTaskIds, setDeletingTaskIds] = useState<Set<number>>(new Set())
+  const [deletingRoadmapIds, setDeletingRoadmapIds] = useState<Set<number>>(new Set())
 
-  useEffect(() => {
-    Promise.all([getDashboard(), getCareerMomentum()])
-      .then(([dashboardData, momentumData]) => {
-        setDashboard(dashboardData)
-        setMomentum(momentumData)
-      })
-      .catch(console.error)
-      .finally(() => setDashboardLoading(false))
-
-    // Fetched separately: a 404 here just means no insights have been
-    // generated yet, and shouldn't block the rest of the dashboard.
-    getSavedInsights()
-      .then(setInsights)
-      .catch(() => setInsights(null))
-
-    getUpcomingTasks()
-      .then((data) => setUpcomingTasks(data.tasks))
-      .catch(console.error)
-      .finally(() => setUpcomingTasksLoading(false))
+  const loadTasks = useCallback(async (roadmapId: number) => {
+    try {
+      const data = await getTasks(roadmapId)
+      setTasks(data)
+    } catch (error) {
+      console.error("Failed to load tasks", error)
+    }
   }, [])
 
-  const handleTaskCompleted = (taskId: number) => {
-    setUpcomingTasks((prev) => prev.filter((t) => t.taskId !== taskId))
-    setDashboard((prev) =>
-      prev
-        ? {
-            ...prev,
-            completedTasks: prev.completedTasks + 1,
-            roadmapProgress:
-              prev.totalTasks === 0
-                ? prev.roadmapProgress
-                : Math.floor(((prev.completedTasks + 1) * 100) / prev.totalTasks),
-          }
-        : prev
+  const loadAnalytics = useCallback(async (roadmapId: number) => {
+    try {
+      const data = await getRoadmapAnalytics(roadmapId)
+      setAnalytics(data)
+    } catch (error) {
+      console.error("Failed to load analytics", error)
+    }
+  }, [])
+
+  const loadRoadmaps = useCallback(async () => {
+    try {
+      setLoading(true)
+
+      const data = await getRoadmaps()
+      setRoadmaps(data)
+
+      if (data.length > 0) {
+        const firstRoadmap = data[0]
+        setSelectedRoadmap(firstRoadmap)
+
+        await Promise.all([
+          loadTasks(firstRoadmap.id),
+          loadAnalytics(firstRoadmap.id),
+        ])
+      }
+    } catch (error) {
+      console.error("Failed to load roadmaps:", error)
+    } finally {
+      setLoading(false)
+    }
+  }, [loadTasks, loadAnalytics])
+
+  useEffect(() => {
+    void loadRoadmaps()
+  }, [loadRoadmaps])
+
+  const selectRoadmap = async (roadmap: Roadmap) => {
+    setSelectedRoadmap(roadmap)
+
+    await Promise.all([loadTasks(roadmap.id), loadAnalytics(roadmap.id)])
+  }
+
+  const toggleTask = async (taskId: number, completed: boolean) => {
+    if (!selectedRoadmap) return
+
+    // Optimistic update — flip the checkbox and adjust progress
+    // immediately instead of waiting on 4 sequential network calls
+    // (update + reload tasks + reload analytics + reload roadmaps).
+    // That round trip was what made the checkbox feel unresponsive.
+    const previousTasks = tasks
+    const previousRoadmaps = roadmaps
+    const previousSelectedRoadmap = selectedRoadmap
+
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, completed } : t))
     )
+
+    const delta = completed ? 1 : -1
+    const applyDelta = (roadmap: Roadmap) => {
+      if (roadmap.id !== selectedRoadmap.id) return roadmap
+      const completedTasks = Math.min(
+        Math.max(roadmap.completedTasks + delta, 0),
+        roadmap.totalTasks
+      )
+      const progress =
+        roadmap.totalTasks === 0
+          ? 0
+          : Math.floor((completedTasks * 100) / roadmap.totalTasks)
+      return { ...roadmap, completedTasks, progress }
+    }
+
+    setRoadmaps((prev) => prev.map(applyDelta))
+    setSelectedRoadmap((prev) => (prev ? applyDelta(prev) : prev))
+
+    try {
+      await updateTask(taskId, { completed })
+      // Analytics (overdue/priority breakdown) can settle in the
+      // background — it doesn't need to block the checkbox.
+      void loadAnalytics(selectedRoadmap.id)
+    } catch (error) {
+      console.error("Failed to update task", error)
+      // Revert on failure so the UI never shows a state the server
+      // didn't actually save.
+      setTasks(previousTasks)
+      setRoadmaps(previousRoadmaps)
+      setSelectedRoadmap(previousSelectedRoadmap)
+    }
   }
 
-  const stats = dashboard
-    ? [
-        {
-          title: "Roadmap Progress",
-          value: `${dashboard.roadmapProgress}%`,
-          description: `${dashboard.completedTasks} of ${dashboard.totalTasks} tasks completed`,
-          icon: Target,
-          progress: dashboard.roadmapProgress,
-          isProgressIndeterminate: false,
-        },
-        {
-          title: "LeetCode Solved",
-          value: dashboard.leetcodeSolved.toString(),
-          description: "Problems solved",
-          icon: Code2,
-          progress: 100,
-          isProgressIndeterminate: true,
-        },
-        {
-          title: "Completed Tasks",
-          value: dashboard.completedTasks.toString(),
-          description: `${dashboard.totalTasks} total tasks`,
-          icon: CheckCircle2,
-          progress:
-            dashboard.totalTasks === 0
-              ? 0
-              : (dashboard.completedTasks * 100) / dashboard.totalTasks,
-          isProgressIndeterminate: false,
-        },
-        {
-          title: "Active Projects",
-          value: dashboard.activeProjects.toString(),
-          description: "Projects in progress",
-          icon: Rocket,
-          progress: 0,
-          isProgressIndeterminate: true,
-        },
-      ]
-    : []
+  const handleDeleteRoadmap = async (roadmapId: number) => {
+  try {
+    setDeletingRoadmapIds((prev) => new Set(prev).add(roadmapId))
+    await deleteRoadmap(roadmapId)
 
-  if (dashboardLoading) {
-    return <DashboardLoading />
+    const updatedRoadmaps = await getRoadmaps()
+    setRoadmaps(updatedRoadmaps)
+
+    if (updatedRoadmaps.length > 0) {
+      setSelectedRoadmap(updatedRoadmaps[0])
+      await loadTasks(updatedRoadmaps[0].id)
+    } else {
+      setSelectedRoadmap(null)
+      setTasks([])
+    }
+  } catch (error) {
+    console.error("Failed to delete roadmap", error)
+  } finally {
+    setDeletingRoadmapIds((prev) => {
+      const next = new Set(prev)
+      next.delete(roadmapId)
+      return next
+    })
   }
+}
 
-  if (!dashboard && !dashboardLoading) {
-    return <div className="p-6">Failed to load dashboard data.</div>
+  const handleDeleteTask = async (taskId: number) => {
+  try {
+    setDeletingTaskIds((prev) => new Set(prev).add(taskId))
+    await deleteTask(taskId)
+
+    if (!selectedRoadmap) return
+
+    const [, , updatedRoadmaps] = await Promise.all([
+      loadTasks(selectedRoadmap.id),
+      loadAnalytics(selectedRoadmap.id),
+      getRoadmaps(),
+    ])
+
+    setRoadmaps(updatedRoadmaps)
+
+    const updatedRoadmap = updatedRoadmaps.find((r) => r.id === selectedRoadmap.id)
+    if (updatedRoadmap) setSelectedRoadmap(updatedRoadmap)
+  } catch (error) {
+    console.error("Failed to delete task", error)
+  } finally {
+    setDeletingTaskIds((prev) => {
+      const next = new Set(prev)
+      next.delete(taskId)
+      return next
+    })
+  }
+}
+
+  if (loading) {
+    return <RoadmapLoading />
   }
 
   return (
-    <div className="container mx-auto space-y-6 p-4 sm:space-y-8 sm:p-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div className="min-w-0 space-y-2">
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="rounded-full px-3 py-1">
-              <Sparkles className="mr-1 h-3.5 w-3.5" />
-              Dashboard
-            </Badge>
+    <div className="grid h-full gap-6 p-4 sm:p-6 lg:grid-cols-3">
+      {/* LEFT PANEL */}
+      <Card className="lg:col-span-1">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Roadmaps</CardTitle>
+
+            <div className="flex items-center gap-2">
+              <Button asChild variant="outline">
+                <Link href="/roadmap/generate">Generate with AI</Link>
+              </Button>
+
+              <CreateRoadmapDialog onCreated={loadRoadmaps} />
+            </div>
           </div>
-          <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">
-            Welcome, {user?.username ?? "User"}!
-          </h1>
-          <p className="truncate text-sm text-muted-foreground">
-            {user?.email ?? "your email"} • Your career progress at a glance
-          </p>
-        </div>
+        </CardHeader>
 
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Button
-            variant="outline"
-            className="w-full sm:w-auto"
-            onClick={() => router.push("/roadmap")}
-          >
-            <BookOpen className="mr-2 h-4 w-4" />
-            View Roadmap
-          </Button>
+        <CardContent className="space-y-4">
+          {roadmaps.length === 0 && (
+            <div className="rounded-xl border p-4">
+              <p className="text-sm text-muted-foreground">
+                No roadmaps found.
+              </p>
+            </div>
+          )}
 
-          <Button
-            className="w-full sm:w-auto"
-            onClick={() => router.push("/roadmap/generate")}
-          >
-            <Sparkles className="mr-2 h-4 w-4" />
-            Generate AI Roadmap
-          </Button>
-        </div>
-      </div>
+          {roadmaps.map((roadmap) => (
+            <div
+              key={roadmap.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => selectRoadmap(roadmap)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  selectRoadmap(roadmap)
+                }
+              }}
+              className={`w-full cursor-pointer rounded-xl border p-4 text-left transition hover:bg-muted ${selectedRoadmap?.id === roadmap.id ? "border-primary" : ""
+                }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium">{roadmap.title}</h3>
+                </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => {
-          const Icon = stat.icon
+                <div className="flex items-center gap-1">
+                  <EditRoadmapDialog
+                    roadmapId={roadmap.id}
+                    initialTitle={roadmap.title}
+                    initialDescription={roadmap.description ?? ""}
+                    onUpdated={loadRoadmaps}
+                  />
 
-          return (
-            <Card key={stat.title} className="rounded-2xl">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {stat.title}
-                </CardTitle>
+                  <span className="mx-1 text-sm text-muted-foreground">
+                    {roadmap.progress}%
+                  </span>
 
-                <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </CardHeader>
+                  {deletingRoadmapIds.has(roadmap.id) ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : (
+                    <DeleteConfirmDialog
+                      title="Delete Roadmap"
+                      description="This roadmap and all its tasks will be permanently deleted."
+                      onConfirm={() => handleDeleteRoadmap(roadmap.id)}
+                      trigger={
+                        <button
+                          type="button"
+                          aria-label="Delete roadmap"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      }
+                    />
+                  )}
+                </div>
+              </div>
 
-              <CardContent className="space-y-3">
-                <div className="text-2xl font-bold">{stat.value}</div>
+              <div className="mt-3">
+                <Progress value={roadmap.progress} />
+              </div>
 
-                <p className="text-xs text-muted-foreground">
-                  {stat.description}
-                </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {roadmap.completedTasks}
+                {" / "}
+                {roadmap.totalTasks}
+                {" tasks completed"}
+              </p>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
-                {stat.isProgressIndeterminate ? null : (
-                  <Progress value={stat.progress} className="h-2" />
-                )}
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
+      {/* RIGHT PANEL */}
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>{selectedRoadmap?.title ?? "Tasks"}</CardTitle>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <UpcomingTasksCard
-          tasks={upcomingTasks}
-          loading={upcomingTasksLoading}
-          onTaskCompleted={handleTaskCompleted}
-        />
-        {momentum && <CareerMomentumCard momentum={momentum} />}
-      </div>
+            {selectedRoadmap && (
+              <CreateTaskDialog
+                roadmapId={selectedRoadmap.id}
+                onCreated={async () => {
+                  await Promise.all([
+                    loadTasks(selectedRoadmap.id),
+                    loadAnalytics(selectedRoadmap.id),
+                  ])
 
-      <PlatformSnapshotCard />
+                  const updatedRoadmaps = await getRoadmaps()
 
-      <AICoachCard
-        insightsLoading={insightsLoading}
-        insights={insights}
-        router={router}
-      />
+                  setRoadmaps(updatedRoadmaps)
+
+                  const updated = updatedRoadmaps.find(
+                    (r) => r.id === selectedRoadmap.id
+                  )
+
+                  if (updated) {
+                    setSelectedRoadmap(updated)
+                  }
+                }}
+              />
+            )}
+          </div>
+        </CardHeader>
+        {analytics && <RoadmapAnalyticsCard analytics={analytics} />}
+        <CardContent className="space-y-3">
+          {!selectedRoadmap && (
+            <p className="text-sm text-muted-foreground">Select a roadmap.</p>
+          )}
+
+          {selectedRoadmap && tasks.length === 0 && (
+            <p className="text-sm text-muted-foreground">No tasks available.</p>
+          )}
+
+          {tasks.map((task) => (
+            <div key={task.id} className="rounded-xl border p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex flex-1 items-start gap-3">
+                  <Checkbox
+                    checked={task.completed}
+                    onCheckedChange={(checked) =>
+                      toggleTask(task.id, Boolean(checked))
+                    }
+                  />
+
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium">{task.title}</p>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                          task.priority === "HIGH"
+                            ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400"
+                            : task.priority === "LOW"
+                              ? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                              : "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-400"
+                        }`}
+                      >
+                        {task.priority}
+                      </span>
+                      {task.dueDate && (
+                        <span className="text-xs text-muted-foreground">
+                          Due {task.dueDate}
+                        </span>
+                      )}
+                    </div>
+
+                    {task.description && (
+                      <p className="text-sm text-muted-foreground">
+                        {task.description}
+                      </p>
+                    )}
+
+                    <div className="mt-1.5">
+                      <TaskResourcesDialog taskId={task.id} taskTitle={task.title} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <EditTaskDialog
+                    taskId={task.id}
+                    title={task.title}
+                    description={task.description ?? ""}
+                    completed={task.completed}
+                    priority={task.priority}
+                    dueDate={task.dueDate}
+                    onUpdated={async () => {
+                      if (selectedRoadmap) {
+                        await loadTasks(selectedRoadmap.id)
+                      }
+                    }}
+                  />
+
+                  {deletingTaskIds.has(task.id) ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : (
+                    <DeleteConfirmDialog
+                      title="Delete Task"
+                      description="This task will be permanently deleted."
+                      onConfirm={() => handleDeleteTask(task.id)}
+                      trigger={
+                        <button
+                          type="button"
+                          aria-label="Delete task"
+                          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      }
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   )
 }

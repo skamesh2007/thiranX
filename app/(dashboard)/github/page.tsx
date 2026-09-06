@@ -73,9 +73,6 @@ export default function GitHubPage() {
         setStats(statsRes)
         setRepositories(repositoriesRes)
         setActivity(activityRes)
-
-        setStats(statsRes)
-        setRepositories(repositoriesRes)
       } catch {
         setHasLinked(false)
         setStats(null)
@@ -172,20 +169,7 @@ export default function GitHubPage() {
         </div>
       </div>
 
-      {repositories && (
-        <>
-          <div className="grid grid-cols-2 gap-3">
-            <StatCard
-              label="Total Repos"
-              value={repositories.totalRepositories}
-            />
-
-            <StatCard label="Total Stars" value={repositories.totalStars} />
-          </div>
-
-          <RepositoryList repositories={repositories.repositories} />
-        </>
-      )}
+      {repositories && <RepositoryList repositories={repositories.repositories} />}
 
       {activity && <GitHubActivityCard activity={activity} />}
 

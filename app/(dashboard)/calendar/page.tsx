@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   AlertCircle,
   CalendarDays,
@@ -17,6 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 
 import MonthCalendar from "@/components/calendar/monthCalendar"
 import AddTodoDialog from "@/components/calendar/addToDoDialog"
+import InlineToast from "@/components/ui/inline-toast"
 
 import { getCalendarMonth, generateAiPlan } from "@/services/calendarService"
 import { updateTodo, deleteTodo } from "@/services/todoService"
@@ -44,6 +45,15 @@ export default function CalendarPage() {
 
   const [planning, setPlanning] = useState(false)
   const [planMessage, setPlanMessage] = useState("")
+
+  const [saveError, setSaveError] = useState("")
+  const saveErrorTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const showSaveError = (message: string) => {
+    if (saveErrorTimeout.current) clearTimeout(saveErrorTimeout.current)
+    setSaveError(message)
+    saveErrorTimeout.current = setTimeout(() => setSaveError(""), 4000)
+  }
 
   const loadMonth = useCallback(async () => {
     setLoading(true)
@@ -73,15 +83,30 @@ export default function CalendarPage() {
     id: number,
     completed: boolean
   ) => {
+    // Optimistic update — flip the checkbox immediately instead of
+    // waiting on the update call + a full month reload.
+    const previous = daysByDate
+    setDaysByDate((prev) => {
+      const next = new Map(prev)
+      for (const [date, day] of next) {
+        const items = day.items.map((item) =>
+          item.kind === kind && item.id === id ? { ...item, completed } : item
+        )
+        next.set(date, { ...day, items })
+      }
+      return next
+    })
+
     try {
       if (kind === "todo") {
         await updateTodo(id, { completed })
       } else {
         await updateTask(id, { completed })
       }
-      await loadMonth()
     } catch (err) {
       console.error("Failed to update item", err)
+      setDaysByDate(previous)
+      showSaveError("Couldn't save that change — please try again.")
     }
   }
 
@@ -120,7 +145,9 @@ export default function CalendarPage() {
   })
 
   return (
-    <div className="container mx-auto space-y-6 p-4 pb-24 sm:p-6">
+    <>
+      <InlineToast message={saveError} onDismiss={() => setSaveError("")} />
+      <div className="container mx-auto space-y-6 p-4 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight sm:text-3xl">
@@ -249,5 +276,6 @@ export default function CalendarPage() {
         </Card>
       </div>
     </div>
+    </>
   )
 }

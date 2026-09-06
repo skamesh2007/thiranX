@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 
 import {
   getRoadmaps,
@@ -26,6 +26,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import EditRoadmapDialog from "@/components/roadmap/EditRoadmapDialog"
 import EditTaskDialog from "@/components/roadmap/EditTaskDialog"
 import TaskResourcesDialog from "@/components/roadmap/TaskResourcesDialog"
+import InlineToast from "@/components/ui/inline-toast"
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -43,6 +44,15 @@ export default function RoadmapPage() {
   const [loading, setLoading] = useState(true)
   const [deletingTaskIds, setDeletingTaskIds] = useState<Set<number>>(new Set())
   const [deletingRoadmapIds, setDeletingRoadmapIds] = useState<Set<number>>(new Set())
+
+  const [saveError, setSaveError] = useState("")
+  const saveErrorTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const showSaveError = (message: string) => {
+    if (saveErrorTimeout.current) clearTimeout(saveErrorTimeout.current)
+    setSaveError(message)
+    saveErrorTimeout.current = setTimeout(() => setSaveError(""), 4000)
+  }
 
   const loadTasks = useCallback(async (roadmapId: number) => {
     try {
@@ -96,25 +106,50 @@ export default function RoadmapPage() {
   }
 
   const toggleTask = async (taskId: number, completed: boolean) => {
+    if (!selectedRoadmap) return
+
+    // Optimistic update — flip the checkbox and adjust progress
+    // immediately instead of waiting on 4 sequential network calls
+    // (update + reload tasks + reload analytics + reload roadmaps).
+    // That round trip was what made the checkbox feel unresponsive.
+    const previousTasks = tasks
+    const previousRoadmaps = roadmaps
+    const previousSelectedRoadmap = selectedRoadmap
+
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, completed } : t))
+    )
+
+    const delta = completed ? 1 : -1
+    const applyDelta = (roadmap: Roadmap) => {
+      if (roadmap.id !== selectedRoadmap.id) return roadmap
+      const completedTasks = Math.min(
+        Math.max(roadmap.completedTasks + delta, 0),
+        roadmap.totalTasks
+      )
+      const progress =
+        roadmap.totalTasks === 0
+          ? 0
+          : Math.floor((completedTasks * 100) / roadmap.totalTasks)
+      return { ...roadmap, completedTasks, progress }
+    }
+
+    setRoadmaps((prev) => prev.map(applyDelta))
+    setSelectedRoadmap((prev) => (prev ? applyDelta(prev) : prev))
+
     try {
       await updateTask(taskId, { completed })
-
-      if (!selectedRoadmap) return
-
-      const [, , updatedRoadmaps] = await Promise.all([
-        loadTasks(selectedRoadmap.id),
-        loadAnalytics(selectedRoadmap.id),
-        getRoadmaps(),
-      ])
-
-      setRoadmaps(updatedRoadmaps)
-
-      const updatedRoadmap = updatedRoadmaps.find(
-        (r) => r.id === selectedRoadmap.id
-      )
-      if (updatedRoadmap) setSelectedRoadmap(updatedRoadmap)
+      // Analytics (overdue/priority breakdown) can settle in the
+      // background — it doesn't need to block the checkbox.
+      void loadAnalytics(selectedRoadmap.id)
     } catch (error) {
       console.error("Failed to update task", error)
+      // Revert on failure so the UI never shows a state the server
+      // didn't actually save.
+      setTasks(previousTasks)
+      setRoadmaps(previousRoadmaps)
+      setSelectedRoadmap(previousSelectedRoadmap)
+      showSaveError("Couldn't save that change — please try again.")
     }
   }
 
@@ -177,7 +212,9 @@ export default function RoadmapPage() {
   }
 
   return (
-    <div className="grid h-full gap-6 p-6 lg:grid-cols-3">
+    <>
+      <InlineToast message={saveError} onDismiss={() => setSaveError("")} />
+      <div className="grid h-full gap-6 p-4 sm:p-6 lg:grid-cols-3">
       {/* LEFT PANEL */}
       <Card className="lg:col-span-1">
         <CardHeader>
@@ -204,10 +241,18 @@ export default function RoadmapPage() {
           )}
 
           {roadmaps.map((roadmap) => (
-            <button
+            <div
               key={roadmap.id}
+              role="button"
+              tabIndex={0}
               onClick={() => selectRoadmap(roadmap)}
-              className={`w-full rounded-xl border p-4 text-left transition hover:bg-muted ${selectedRoadmap?.id === roadmap.id ? "border-primary" : ""
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  selectRoadmap(roadmap)
+                }
+              }}
+              className={`w-full cursor-pointer rounded-xl border p-4 text-left transition hover:bg-muted ${selectedRoadmap?.id === roadmap.id ? "border-primary" : ""
                 }`}
             >
               <div className="flex items-center justify-between">
@@ -215,7 +260,7 @@ export default function RoadmapPage() {
                   <h3 className="font-medium">{roadmap.title}</h3>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1">
                   <EditRoadmapDialog
                     roadmapId={roadmap.id}
                     initialTitle={roadmap.title}
@@ -223,7 +268,7 @@ export default function RoadmapPage() {
                     onUpdated={loadRoadmaps}
                   />
 
-                  <span className="text-sm text-muted-foreground">
+                  <span className="mx-1 text-sm text-muted-foreground">
                     {roadmap.progress}%
                   </span>
 
@@ -235,10 +280,14 @@ export default function RoadmapPage() {
                       description="This roadmap and all its tasks will be permanently deleted."
                       onConfirm={() => handleDeleteRoadmap(roadmap.id)}
                       trigger={
-                        <Trash2
-                          className="h-4 w-4 cursor-pointer text-muted-foreground hover:text-destructive"
+                        <button
+                          type="button"
+                          aria-label="Delete roadmap"
                           onClick={(e) => e.stopPropagation()}
-                        />
+                          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       }
                     />
                   )}
@@ -255,7 +304,7 @@ export default function RoadmapPage() {
                 {roadmap.totalTasks}
                 {" tasks completed"}
               </p>
-            </button>
+            </div>
           ))}
         </CardContent>
       </Card>
@@ -368,7 +417,13 @@ export default function RoadmapPage() {
                       description="This task will be permanently deleted."
                       onConfirm={() => handleDeleteTask(task.id)}
                       trigger={
-                        <Trash2 className="h-4 w-4 cursor-pointer text-muted-foreground hover:text-destructive" />
+                        <button
+                          type="button"
+                          aria-label="Delete task"
+                          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       }
                     />
                   )}
@@ -379,5 +434,6 @@ export default function RoadmapPage() {
         </CardContent>
       </Card>
     </div>
+    </>
   )
 }

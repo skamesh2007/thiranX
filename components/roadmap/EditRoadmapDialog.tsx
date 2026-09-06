@@ -68,7 +68,14 @@ export default function EditRoadmapDialog({
       onOpenChange={setOpen}
     >
       <DialogTrigger asChild>
-        <Pencil className="h-4 w-4 cursor-pointer text-muted-foreground" />
+        <button
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          aria-label="Edit roadmap"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
       </DialogTrigger>
 
       <DialogContent>

@@ -23,7 +23,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-6">
+    <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6">
       <div className="flex items-start gap-4">
         <button
           onClick={() => router.back()}

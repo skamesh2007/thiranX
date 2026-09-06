@@ -232,7 +232,7 @@ export default function EditProfilePage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 p-6 pb-28">
+    <div className="mx-auto max-w-2xl space-y-6 p-4 sm:p-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <button

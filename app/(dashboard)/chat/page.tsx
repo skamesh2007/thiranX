@@ -75,7 +75,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100svh-6rem)] max-w-3xl flex-col p-4 sm:p-6">
+    <div className="mx-auto flex h-[calc(100svh-6rem)] max-w-3xl flex-col p-4 sm:p-6 md:h-[calc(100svh-4rem)]">
       <div className="mb-4 flex items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10">
           <Sparkles className="h-5 w-5 text-violet-500" />

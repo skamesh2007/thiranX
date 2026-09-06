@@ -50,7 +50,7 @@ export default function ProfilePage() {
   const user = useAuthStore((state) => state.user)
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 p-4 pb-24 sm:p-6">
+    <div className="mx-auto max-w-2xl space-y-6 p-4 sm:p-6">
       <div className="rounded-3xl border bg-background p-6 shadow-sm">
         <div className="flex items-start gap-4">
           <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-muted">

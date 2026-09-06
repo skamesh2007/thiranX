@@ -59,7 +59,7 @@ export default function LeetCodePage() {
 
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 p-4 pb-24 sm:p-6 sm:pb-28">
+    <div className="mx-auto max-w-2xl space-y-6 p-4 sm:p-6">
 
       <LeetCoderHeader {...stats!} />
 

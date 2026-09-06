@@ -82,7 +82,7 @@ export default function TaskResourcesDialog({ taskId, taskTitle }: Props) {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-1 text-xs text-muted-foreground transition hover:text-foreground"
+          className="flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 transition hover:bg-violet-100 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300 dark:hover:bg-violet-950/70"
           title="Find learning resources for this task"
         >
           <Sparkles className="h-3.5 w-3.5" />
