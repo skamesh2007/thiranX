@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  AlertTriangle,
   BookOpen,
   FileText,
   GraduationCap,
@@ -40,6 +41,7 @@ export default function TaskResourcesDialog({ taskId, taskTitle }: Props) {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [resources, setResources] = useState<TaskResource[] | null>(null);
+  const [isFallback, setIsFallback] = useState(false);
   const [error, setError] = useState("");
 
   const load = async () => {
@@ -48,6 +50,7 @@ export default function TaskResourcesDialog({ taskId, taskTitle }: Props) {
     try {
       const data = await getTaskResources(taskId);
       setResources(data.resources);
+      setIsFallback(data.source === "fallback");
     } catch (err) {
       console.error("Failed to load resources", err);
       setError("Couldn't load learning resources. Try again.");
@@ -69,6 +72,7 @@ export default function TaskResourcesDialog({ taskId, taskTitle }: Props) {
     try {
       const data = await refreshTaskResources(taskId);
       setResources(data.resources);
+      setIsFallback(data.source === "fallback");
     } catch (err) {
       console.error("Failed to refresh resources", err);
       setError("Couldn't refresh resources. Try again.");
@@ -96,6 +100,17 @@ export default function TaskResourcesDialog({ taskId, taskTitle }: Props) {
         </DialogHeader>
 
         <div className="space-y-3">
+          {!loading && !error && isFallback && (
+            <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>
+                These are generic suggestions, not AI-tailored picks — the
+                AI service didn't respond. Try &quot;Find different
+                resources&quot; again in a moment.
+              </span>
+            </div>
+          )}
+
           {loading ? (
             <>
               <div className="h-14 animate-pulse rounded-xl border bg-muted" />

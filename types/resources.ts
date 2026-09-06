@@ -12,4 +12,5 @@ export interface TaskResourcesResponse {
   resources: TaskResource[];
   generatedAt: string;
   cached: boolean;
+  source: "ai" | "fallback";
 }

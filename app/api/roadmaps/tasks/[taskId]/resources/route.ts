@@ -17,21 +17,26 @@ async function loadOwnedTaskWithRoadmap(taskId: number, userId: number) {
   return { task, roadmap };
 }
 
-async function generateAndCache(taskId: number, task: any, roadmapTitle: string) {
-  const resources = await generateTaskResources(task.title, task.description, roadmapTitle);
+async function generateAndMaybeCache(taskId: number, task: any, roadmapTitle: string) {
+  const result = await generateTaskResources(task.title, task.description, roadmapTitle);
 
-  await supabaseAdmin
-    .from("task_resources")
-    .upsert(
-      { task_id: taskId, resources, generated_at: new Date().toISOString() },
-      { onConflict: "task_id" }
-    );
+  // Only cache genuine AI output. Caching a fallback would permanently
+  // serve generic placeholders even after the underlying AI issue is
+  // fixed — better to retry generation on the next request instead.
+  if (result.source === "ai") {
+    await supabaseAdmin
+      .from("task_resources")
+      .upsert(
+        { task_id: taskId, resources: result.resources, generated_at: new Date().toISOString() },
+        { onConflict: "task_id" }
+      );
+  }
 
-  return resources;
+  return result;
 }
 
-// GET — returns cached resources if they exist, otherwise generates and
-// caches them. Avoids a Gemini call every time the dialog is opened.
+// GET — returns cached resources if they exist, otherwise generates
+// them. Avoids a Gemini call every time the dialog is opened.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
   try {
     const user = await getAuthUser(req);
@@ -45,11 +50,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ task
       .maybeSingle();
 
     if (cached) {
-      return NextResponse.json({ resources: cached.resources, generatedAt: cached.generated_at, cached: true });
+      return NextResponse.json({
+        resources: cached.resources,
+        generatedAt: cached.generated_at,
+        cached: true,
+        source: "ai",
+      });
     }
 
-    const resources = await generateAndCache(task.id, task, roadmap.title);
-    return NextResponse.json({ resources, generatedAt: new Date().toISOString(), cached: false });
+    const result = await generateAndMaybeCache(task.id, task, roadmap.title);
+    return NextResponse.json({
+      resources: result.resources,
+      generatedAt: new Date().toISOString(),
+      cached: false,
+      source: result.source,
+    });
   } catch (err) {
     return errorResponse(err);
   }
@@ -62,8 +77,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tas
     const { taskId } = await params;
     const { task, roadmap } = await loadOwnedTaskWithRoadmap(Number(taskId), user.id);
 
-    const resources = await generateAndCache(task.id, task, roadmap.title);
-    return NextResponse.json({ resources, generatedAt: new Date().toISOString(), cached: false });
+    const result = await generateAndMaybeCache(task.id, task, roadmap.title);
+    return NextResponse.json({
+      resources: result.resources,
+      generatedAt: new Date().toISOString(),
+      cached: false,
+      source: result.source,
+    });
   } catch (err) {
     return errorResponse(err);
   }

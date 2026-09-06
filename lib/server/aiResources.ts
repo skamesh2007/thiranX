@@ -17,12 +17,41 @@ export interface TaskResource extends RawResourceSuggestion {
   url: string;
 }
 
-function isValid(parsed: any): parsed is { resources: RawResourceSuggestion[] } {
-  return (
-    parsed &&
-    Array.isArray(parsed.resources) &&
-    parsed.resources.length > 0 &&
-    parsed.resources.every(
+export interface TaskResourcesResult {
+  resources: TaskResource[];
+  // "fallback" means Gemini didn't return usable output and these are
+  // generic placeholders, not resources tailored to this task. Callers
+  // should say so in the UI rather than presenting them as AI picks.
+  source: "ai" | "fallback";
+}
+
+// Titles that are just "<task> — <generic noun>" carry no information
+// beyond the task title itself. If the model falls back to this shape
+// despite instructions, treat it as low-quality output rather than a
+// genuine per-task recommendation.
+const GENERIC_SUFFIXES = [
+  "video walkthrough",
+  "official documentation",
+  "written guide",
+  "tutorial",
+  "guide",
+  "overview",
+];
+
+function looksGeneric(title: string, taskTitle: string): boolean {
+  const normalizedTitle = title.trim().toLowerCase();
+  const normalizedTask = taskTitle.trim().toLowerCase();
+  if (!normalizedTitle.startsWith(normalizedTask)) return false;
+  const remainder = normalizedTitle.slice(normalizedTask.length).replace(/^[\s—:-]+/, "");
+  return GENERIC_SUFFIXES.includes(remainder);
+}
+
+function isValid(parsed: any, taskTitle: string): parsed is { resources: RawResourceSuggestion[] } {
+  if (
+    !parsed ||
+    !Array.isArray(parsed.resources) ||
+    parsed.resources.length === 0 ||
+    !parsed.resources.every(
       (r: any) =>
         typeof r?.title === "string" &&
         r.title.trim().length > 0 &&
@@ -30,7 +59,17 @@ function isValid(parsed: any): parsed is { resources: RawResourceSuggestion[] } 
         r.searchQuery.trim().length > 0 &&
         ["video", "article", "documentation", "course"].includes(r?.type)
     )
+  ) {
+    return false;
+  }
+
+  // If every single suggestion is a generic "<task> — noun" template,
+  // the model ignored the instruction to be specific — reject it so
+  // the caller falls back instead of showing filler dressed as AI output.
+  const allGeneric = parsed.resources.every((r: RawResourceSuggestion) =>
+    looksGeneric(r.title, taskTitle)
   );
+  return !allGeneric;
 }
 
 function buildPrompt(taskTitle: string, taskDescription: string | null, roadmapTitle: string) {
@@ -42,12 +81,29 @@ Roadmap: ${roadmapTitle}
 Task: ${taskTitle}
 ${taskDescription ? `Details: ${taskDescription}` : ""}
 
-Suggest 4-6 learning resources that would help complete this specific task.
-Prefer well-known, reputable sources (official docs, MDN, freeCodeCamp,
-official YouTube channels, well-known courses).
+Identify the specific technology, tool, concept, or skill this task is
+actually about (e.g. if the task is "Learn React hooks", the specific
+subject is "React hooks", not "the task"). Then suggest 4-6 learning
+resources for THAT specific subject.
+
+Be concrete and specific — name the actual technology/concept/tool in
+each resource title. Do NOT use generic filler titles like
+"<task name> — video walkthrough", "<task name> — official
+documentation", or "<task name> — written guide". Instead, name what
+the resource actually teaches, e.g. "React useEffect and useState
+explained", "Official React documentation: Hooks reference",
+"freeCodeCamp: React Hooks course".
+
+Prefer well-known, reputable, real sources: official documentation
+sites, MDN, freeCodeCamp, official YouTube channels for the
+technology, well-known course platforms. Vary the resource types
+(mix of video/article/documentation/course) where it makes sense for
+the subject.
 
 Do NOT invent URLs. Instead give a concise, specific search query for
-each resource that would surface it on YouTube or Google.
+each resource that would surface it on YouTube or Google — the query
+should name the actual technology/concept, not just repeat the task
+title verbatim.
 
 JSON schema:
 {
@@ -96,13 +152,21 @@ export async function generateTaskResources(
   taskTitle: string,
   taskDescription: string | null,
   roadmapTitle: string
-): Promise<TaskResource[]> {
+): Promise<TaskResourcesResult> {
   try {
     const text = await generateText(buildPrompt(taskTitle, taskDescription, roadmapTitle));
     const parsed = parseAiJsonObject<{ resources: RawResourceSuggestion[] }>(text);
-    if (!isValid(parsed)) return fallbackResources(taskTitle);
-    return parsed.resources.slice(0, 6).map(toResource);
-  } catch {
-    return fallbackResources(taskTitle);
+
+    if (!isValid(parsed, taskTitle)) {
+      console.error(
+        "AI resources: model output was missing, malformed, or entirely generic — using fallback."
+      );
+      return { resources: fallbackResources(taskTitle), source: "fallback" };
+    }
+
+    return { resources: parsed.resources.slice(0, 6).map(toResource), source: "ai" };
+  } catch (err) {
+    console.error("AI resources: generation failed, using fallback.", err);
+    return { resources: fallbackResources(taskTitle), source: "fallback" };
   }
 }
