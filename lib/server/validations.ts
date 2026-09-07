@@ -15,6 +15,15 @@ export const updateProfileSchema = z.object({
   username: z.string().trim().min(3).max(30),
   name: z.string().trim().max(100).nullable().optional(),
   bio: z.string().trim().max(500).nullable().optional(),
+  linkedinUrl: z
+    .string()
+    .trim()
+    .max(300)
+    .refine((v) => v === "" || /^https?:\/\/([a-z]{2,3}\.)?linkedin\.com\/.+/i.test(v), {
+      message: "Must be a valid linkedin.com profile URL",
+    })
+    .nullable()
+    .optional(),
 });
 
 export const changePasswordSchema = z.object({

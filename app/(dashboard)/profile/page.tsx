@@ -11,6 +11,8 @@ import {
   Sparkles,
   User,
 } from "lucide-react"
+import { FaLinkedinIn as Linkedin } from "react-icons/fa";
+
 import { FaGithub as Github } from "react-icons/fa"
 import { useAuthStore } from "@/store/authStore"
 
@@ -84,6 +86,18 @@ export default function ProfilePage() {
           <p className="mt-4 text-sm text-muted-foreground italic">
             No bio yet — add one from Edit Profile.
           </p>
+        )}
+
+        {user?.linkedinUrl && (
+          <a
+            href={user.linkedinUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 transition hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-950/70"
+          >
+            <Linkedin className="h-3.5 w-3.5" />
+            LinkedIn
+          </a>
         )}
 
         <button

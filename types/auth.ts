@@ -15,6 +15,7 @@ export interface AuthResponse {
   email: string;
   name: string;
   bio: string;
+  linkedinUrl: string;
   role: string;
 }
 
@@ -30,6 +31,7 @@ export type User = {
   email: string;
   name?: string;
   bio?: string;
+  linkedinUrl?: string;
   role?: string;
 };
 

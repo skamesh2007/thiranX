@@ -20,9 +20,14 @@ export async function PATCH(req: NextRequest) {
 
     const { data: updated, error } = await supabaseAdmin
       .from("users")
-      .update({ username: body.username, name: body.name ?? null, bio: body.bio ?? null })
+      .update({
+        username: body.username,
+        name: body.name ?? null,
+        bio: body.bio ?? null,
+        linkedin_url: body.linkedinUrl || null,
+      })
       .eq("id", currentUser.id)
-      .select("id, username, email, name, bio, role")
+      .select("id, username, email, name, bio, linkedin_url, role")
       .single();
 
     if (error || !updated) throw new ApiException(500, "Failed to update profile");

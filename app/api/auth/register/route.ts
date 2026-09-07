@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     const { data: user, error } = await supabaseAdmin
       .from("users")
       .insert({ username: body.username, email: body.email, password_hash: passwordHash, role: "USER" })
-      .select("id, username, email, name, bio, role")
+      .select("id, username, email, name, bio, linkedin_url, role")
       .single();
 
     if (error || !user) throw new ApiException(500, "Failed to create user");

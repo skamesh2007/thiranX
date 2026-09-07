@@ -14,6 +14,7 @@ export async function buildUserContext(user: AppUser): Promise<string> {
 
   lines.push(`User: ${user.username}${user.name ? ` (${user.name})` : ""}`);
   if (user.bio) lines.push(`Bio: ${user.bio}`);
+  if (user.linkedin_url) lines.push(`LinkedIn: ${user.linkedin_url}`);
 
   const { data: roadmaps } = await supabaseAdmin
     .from("roadmaps")

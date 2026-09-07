@@ -12,6 +12,7 @@ export interface AppUser {
   bio: string | null;
   leetcode_username: string | null;
   github_username: string | null;
+  linkedin_url: string | null;
   role: string;
 }
 
@@ -48,7 +49,7 @@ export async function getAuthUser(req: NextRequest): Promise<AppUser> {
 
   const { data, error } = await supabaseAdmin
     .from("users")
-    .select("id, username, email, name, bio, leetcode_username, github_username, role")
+    .select("id, username, email, name, bio, leetcode_username, github_username, linkedin_url, role")
     .eq("id", payload.uid)
     .single();
 
@@ -64,6 +65,7 @@ export function authResponseShape(user: AppUser, token: string) {
     email: user.email,
     name: user.name ?? "",
     bio: user.bio ?? "",
+    linkedinUrl: user.linkedin_url ?? "",
     role: user.role,
   };
 }

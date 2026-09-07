@@ -31,6 +31,7 @@ interface FormState {
   username: string
   name: string
   bio: string
+  linkedinUrl: string
   leetcodeUsername: string
   githubUsername: string
 }
@@ -38,6 +39,7 @@ interface FormState {
 interface FieldErrors {
   username?: string
   name?: string
+  linkedinUrl?: string
   leetcodeUsername?: string
   githubUsername?: string
 }
@@ -47,12 +49,12 @@ interface FieldErrors {
 export default function EditProfilePage() {
   const router = useRouter()
   const user = useAuthStore((state) => state.user)
-  const setUser = useAuthStore((state) => state.setUser)
 
   const [form, setForm] = useState<FormState>({
     username: "",
     name: "",
     bio: "",
+    linkedinUrl: "",
     leetcodeUsername: "",
     githubUsername: "",
   })
@@ -61,6 +63,7 @@ export default function EditProfilePage() {
     username: "",
     name: "",
     bio: "",
+    linkedinUrl: "",
     leetcodeUsername: "",
     githubUsername: "",
   })
@@ -86,6 +89,7 @@ export default function EditProfilePage() {
         username: user?.username ?? "",
         name: user?.name ?? "",
         bio: user?.bio ?? "",
+        linkedinUrl: user?.linkedinUrl ?? "",
         leetcodeUsername:
           leetcodeRes.status === "fulfilled"
             ? (leetcodeRes.value.username ?? "")
@@ -110,6 +114,7 @@ export default function EditProfilePage() {
     form.username !== original.username ||
     form.name !== original.name ||
     form.bio !== original.bio ||
+    form.linkedinUrl !== original.linkedinUrl ||
     form.leetcodeUsername !== original.leetcodeUsername ||
     form.githubUsername !== original.githubUsername
 
@@ -136,7 +141,8 @@ export default function EditProfilePage() {
       const profileChanged =
         form.username !== original.username ||
         form.name !== original.name ||
-        form.bio !== original.bio
+        form.bio !== original.bio ||
+        form.linkedinUrl !== original.linkedinUrl
 
       const leetcodeChanged =
         form.leetcodeUsername !== original.leetcodeUsername
@@ -152,6 +158,7 @@ export default function EditProfilePage() {
             username: form.username.trim(),
             name: form.name.trim(),
             bio: form.bio.trim(),
+            linkedinUrl: form.linkedinUrl.trim(),
           })
         )
       }
@@ -182,20 +189,11 @@ export default function EditProfilePage() {
         throw failures[0].reason
       }
 
-      // Update store if profile info changed
-      if (profileChanged && user) {
-        setUser({
-          ...user,
-          username: form.username.trim(),
-          name: form.name.trim(),
-          bio: form.bio.trim(),
-        })
-      }
-
       const newOriginal = {
         username: form.username.trim(),
         name: form.name.trim(),
         bio: form.bio.trim(),
+        linkedinUrl: form.linkedinUrl.trim(),
         leetcodeUsername: form.leetcodeUsername.trim(),
         githubUsername: form.githubUsername.trim(),
       }
@@ -321,6 +319,30 @@ export default function EditProfilePage() {
                   ) : (
                     <FieldDescription>
                       Shown on your profile card.
+                    </FieldDescription>
+                  )}
+                </Field>
+
+                <Field>
+                  <FieldLabel htmlFor="linkedinUrl">LinkedIn Profile</FieldLabel>
+                  <Input
+                    id="linkedinUrl"
+                    type="url"
+                    value={form.linkedinUrl}
+                    onChange={setField("linkedinUrl")}
+                    placeholder="https://linkedin.com/in/your-profile"
+                    aria-invalid={!!fieldErrors.linkedinUrl}
+                    className="h-11 text-base"
+                  />
+                  {fieldErrors.linkedinUrl ? (
+                    <p className="mt-1 text-xs text-red-500">
+                      {fieldErrors.linkedinUrl}
+                    </p>
+                  ) : (
+                    <FieldDescription>
+                      Link to your LinkedIn profile — shown on your
+                      ThiranX profile page. We only store the link, not
+                      any data from LinkedIn.
                     </FieldDescription>
                   )}
                 </Field>

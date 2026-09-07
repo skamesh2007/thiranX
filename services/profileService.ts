@@ -6,6 +6,7 @@ export interface UpdateProfileRequest {
   username: string;
   name: string;
   bio: string;
+  linkedinUrl: string;
 }
 
 /**
@@ -26,6 +27,7 @@ export const updateProfile = async (
     email: updated.email,
     name: updated.name,
     bio: updated.bio,
+    linkedinUrl: updated.linkedinUrl,
     role: updated.role,
   });
 

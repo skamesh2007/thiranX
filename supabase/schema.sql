@@ -106,3 +106,6 @@ create table if not exists todos (
 create index if not exists idx_todos_user on todos(user_id);
 create index if not exists idx_todos_due_date on todos(due_date);
 alter table todos enable row level security;
+
+
+alter table users add column if not exists linkedin_url text;
